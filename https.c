@@ -5,22 +5,28 @@
 #include <openssl/rand.h>
 #include <openssl/crypto.h>
 
-#include "http.h"
 #include "https.h"
 #include "socket.h"
 
 /*
+ * @type: GET or POST
  * @host: the remote host's name or ip
  * @port: the remote host port
  * @path: the path to get
  * @resp: response buffer
  * @len: the length of response buffer
  */
-int https_send_get(const char *host, uint16_t port, const char *path, char *resp, int len)
+int https_send_request(enum request type, const char *host, uint16_t port, const char *path, char *resp, int len)
 {
 	char header[512];
+	int header_len;
 
-	int header_len = http_build_get_header(host, path, header);
+	if (type == GET)
+		header_len = http_build_get_header(host, path, header);
+	else if (type == POST)
+		header_len = http_build_post_header(host, path, header);
+	else
+		return -1;
 
     SSL_library_init();
     SSL_load_error_strings();
@@ -81,8 +87,7 @@ int https_send_get(const char *host, uint16_t port, const char *path, char *resp
 			goto out;
 		}
 	}
-	ret = nread = ptr - resp;
-	ptr[nread] = '\0';
+	ret = ptr - resp;
 
 out:
     SSL_shutdown(ssl);
